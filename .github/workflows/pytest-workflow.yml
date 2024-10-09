@@ -12,3 +12,7 @@ jobs:
       run: make
     - name: Run tests via docker image
       run: make test
+    - name: Run pre-commit
+      run: |
+        pip install pre-commit
+        pre-commit run --all-files
