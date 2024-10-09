@@ -1,0 +1,14 @@
+name: Makefile Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run make to create docker image
+      run: make
+    - name: Run tests via docker image
+      run: make test
