@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: end-of-file-fixer
+        stages: [commit, push]
+
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        stages: [commit, push]
+
+      - id: fix-byte-order-marker
+        stages: [commit, push]
+
+  - repo: https://github.com/python/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        stages: [commit, push]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.5.1
+    hooks:
+      - id: mypy
+        stages: [commit, push]
