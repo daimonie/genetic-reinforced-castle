@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "templatepython"
+name = "genetic-castle"
 version = "0.1.0"
 description = ""
 authors = ["J. S. de Boer <joskodeboer@gmail.com>"]
@@ -19,7 +19,8 @@ jupyterlab = "^4.0.9"
 seaborn = "^0.13.0"
 pyarrow = "^14.0.1"
 matplotlib = "^3.8.2"
-
+gymnasium = "^0.29.1"
+rl_zoo3 = "^2.2.1"
 [tool.poetry.group.dev.dependencies]
 
 [build-system]

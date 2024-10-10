@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Dict
+from castle.game import Config
 
 
 class Player(ABC):
-    def __init__(self, config):
+    def __init__(self, config: Config):
         self.config = config
 
     @abstractmethod
@@ -14,6 +15,17 @@ class Player(ABC):
         Returns:
             Dict[int, int]: A dictionary where keys are castle numbers
             and values are the number of armies placed in each castle.
+        """
+        pass
+
+    @abstractmethod
+    def update(self, reward: float, training_progress: float):
+        """
+        Update the player's strategy based on the reward received.
+
+        Args:
+            reward (float): The reward received for the last action.
+            training_progress (float): The current progress of training, typically between 0 and 1.
         """
         pass
 
@@ -68,3 +80,13 @@ class RandomPlayer(Player):
         # No need to shuffle as the distribution is already random
 
         return distribution
+
+    def update(self, reward: float, training_progress: float):
+        """
+        A dummy update method that does nothing.
+
+        Args:
+            reward (float): The reward received for the last action.
+            training_progress (float): The current training progress.
+        """
+        pass

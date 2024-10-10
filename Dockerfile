@@ -1,27 +1,30 @@
-from python:3.12.3
-
-# update the debian packages
-RUN apt-get update
-RUN apt install pre-commit -y
-
-# install poetry
-RUN pip install poetry
-RUN poetry --version
-
-
-# copy container directory into docker image, move to it
-COPY container/ /opt/container
-WORKDIR /opt/container
+FROM python:3.12.3
 
 # Create a group and user
-RUN groupadd -r python-role && useradd -r -g python-role pythonuser
+RUN groupadd -r python-role && useradd -m -r -g python-role pythonuser
 
-# Additional read/write for container & home
-RUN chmod a+rw /opt/container/
-RUN chmod a+rw /home
+# Create the project directory and set ownership
+RUN mkdir -p /opt/container && chown -R pythonuser:python-role /opt/container
 
-# Switch to this user
+# Switch to the non-root user
 USER pythonuser
 
-# install poetry from pypoetry.toml
+# Set working directory
+WORKDIR /opt/container
+
+# Copy container directory into docker image
+COPY --chown=pythonuser:python-role container/ .
+
+# Install poetry in user's home directory
+RUN curl -sSL https://install.python-poetry.org | python3 -
+
+# Add poetry to PATH
+ENV PATH="/home/pythonuser/.local/bin:$PATH"
+
+# Verify poetry installation
+RUN poetry --version
+
+# Install dependencies using Poetry
 RUN poetry install
+# Set the entrypoint to bash
+ENTRYPOINT ["/bin/bash"]

@@ -1,10 +1,14 @@
 import numpy as np
 from typing import Dict
 from players.player import Player
+from castle.game import Config
+import gymnasium as gym
+from gymnasium import spaces
+from rl_zoo3 import DQN
 
 
 class ReinforcedPlayer(Player):
-    def __init__(self, config):
+    def __init__(self, config: Config):
         super().__init__(config)
         self.qmatrix = np.ones(
             (self.config.num_castles, self.config.armies_per_player + 1)
@@ -103,3 +107,78 @@ class ReinforcedPlayer(Player):
             distribution[castle] = int(armies)
 
         return distribution
+
+
+class GymPlayer(Player):
+    def __init__(self, config: Config):
+        super().__init__(config)
+        self.action_space = spaces.MultiDiscrete(
+            [self.config.armies_per_player + 1] * self.config.num_castles
+        )
+        self.observation_space = spaces.Dict(
+            {
+                "castles": spaces.Box(
+                    low=0,
+                    high=self.config.armies_per_player,
+                    shape=(self.config.num_castles,),
+                    dtype=np.int32,
+                ),
+                "total_armies": spaces.Discrete(self.config.armies_per_player + 1),
+            }
+        )
+        self.model = DQN("MultiInputPolicy", self, verbose=1)
+        self.last_action = None
+        self.last_state = None
+
+    def reset(self, seed=None, options=None):
+        super().reset()
+        self.last_action = None
+        self.last_state = None
+        return self._get_observation(), {}
+
+    def _get_observation(self):
+        return {
+            "castles": np.array(
+                [
+                    self.config.points_per_castle[castle]
+                    for castle in range(1, self.config.num_castles + 1)
+                ],
+                dtype=np.int32,
+            ),
+            "total_armies": self.config.armies_per_player,
+        }
+
+    def step(self, action):
+        self.last_action = action
+        self.last_state = self._get_observation()
+        # Placeholder values - update these based on your game logic
+        return self._get_observation(), 0, False, False, {}
+
+    def distribute_armies(self) -> Dict[int, int]:
+        state = self._get_observation()
+        action, _ = self.model.predict(state, deterministic=True)
+        distribution = {i + 1: int(a) for i, a in enumerate(action)}
+        self.last_action = distribution
+        self.last_state = state
+        return distribution
+
+    def update(self, reward: float, training_progress: float):
+        if self.last_action is None or self.last_state is None:
+            return
+
+        next_state = self._get_observation()
+        done = False  # Update this based on your game logic
+        self.model.learn(total_timesteps=1, reset_num_timesteps=False)
+
+    def save(self, path: str):
+        self.model.save(path)
+
+    def load(self, path: str):
+        self.model = DQN.load(path, env=self)
+
+    # Implement these methods to make the class compatible with gym.Env
+    def render(self):
+        pass
+
+    def close(self):
+        pass
