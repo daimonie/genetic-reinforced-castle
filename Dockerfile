@@ -15,8 +15,8 @@ WORKDIR /opt/container
 # Copy container directory into docker image
 COPY --chown=pythonuser:python-role container/ .
 
-# Install poetry in user's home directory
-RUN curl -sSL https://install.python-poetry.org | python3 -
+# Install poetry using pip
+RUN pip install --user poetry
 
 # Add poetry to PATH
 ENV PATH="/home/pythonuser/.local/bin:$PATH"

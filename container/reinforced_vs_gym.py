@@ -1,7 +1,7 @@
-import click
-import numpy as np
-from players.player import Player, RandomPlayer
-from players.reinforcement import ReinforcedPlayer, GymPlayer
+import math
+from players.player import RandomPlayer
+from players.reinforcement import ReinforcedPlayer
+from players.genetic import GeneticPlayer
 from castle.game import Game, Config
 
 
@@ -9,64 +9,178 @@ def create_player(player_type, config):
     if player_type == "random":
         return RandomPlayer(config)
     elif player_type == "reinforced":
-        return ReinforcedPlayer(config)
-    elif player_type == "gym":
-        return GymPlayer(config)
+        if player_type == "reinforced":
+            return ReinforcedPlayer(config)
+        elif player_type == "genetic":
+            return GeneticPlayer(config)
     else:
         raise ValueError(f"Invalid player type: {player_type}")
 
 
-def train_players(player1, player2, config, game):
-    print(
-        f"Training {player1.__class__.__name__} against {player2.__class__.__name__}..."
-    )
-    player1_wins = []
-    player1_scores = []
+class Trainer:
+    def __init__(self, config, game, player_left, player_right):
+        self.config = config
+        self.game = game
+        self.player_left = player_left
+        self.player_right = player_right
+        self.initialize()
 
-    for game_number in range(config.reinforced_training_games):
-        player1_won, player1_score, player2_score = game.play_game(player1, player2)
+    def initialize(self):
+        self.population_left = self.create_population(self.player_left)
+        self.population_right = self.create_population(self.player_right)
+        self.pop_size_left = len(self.population_left)
+        self.pop_size_right = len(self.population_right)
+        self.num_rounds = math.ceil(
+            self.config.num_training_rounds
+            / max(self.pop_size_left, self.pop_size_right)
+        )
 
-        # Calculate rewards
+    def create_population(self, player_type):
+        if player_type.lower() in self.config.population_players:
+            return [
+                create_player(player_type, self.config)
+                for _ in range(self.config.population_size)
+            ]
+        return [create_player(player_type, self.config)]
+
+    def train(self):
+        print(
+            f"Training {self.player_left.capitalize()} against {self.player_right.capitalize()}..."
+        )
+
+        for round_number in range(self.num_rounds):
+            left_results, right_results = self.play_round(round_number)
+            self.evolve_populations(left_results, right_results)
+            self.print_progress(round_number, left_results, right_results)
+
+        print(f"\nTraining completed after {self.num_rounds} rounds.")
+
+    def play_round(self, round_number):
+        left_results = []
+        right_results = []
+        training_progress = (round_number + 1) / self.num_rounds
+
+        for left_player in self.population_left:
+            for right_player in self.population_right:
+                player1_reward, player2_reward = self.play_game(
+                    left_player, right_player
+                )
+                self.update_players(
+                    left_player,
+                    right_player,
+                    player1_reward,
+                    player2_reward,
+                    training_progress,
+                )
+                left_results.append((left_player, player1_reward))
+                right_results.append((right_player, player2_reward))
+
+        return left_results, right_results
+
+    def play_game(self, left_player, right_player):
+        player1_won, player1_score, player2_score = self.game.play_game(
+            left_player, right_player
+        )
+
         if player1_won:
-            player1_reward = player1_score + config.reinforced_win_reward
-            player2_reward = player2_score - config.reinforced_lose_penalty
+            player1_reward = player1_score + self.config.reinforced_win_reward
+            player2_reward = player2_score - self.config.reinforced_lose_penalty
         else:
-            player1_reward = player1_score - config.reinforced_lose_penalty
-            player2_reward = player2_score + config.reinforced_win_reward
+            player1_reward = player1_score - self.config.reinforced_lose_penalty
+            player2_reward = player2_score + self.config.reinforced_win_reward
 
-        # Update players
-        training_progress = (game_number + 1) / config.reinforced_training_games
-        player1.update(player1_reward, training_progress=training_progress)
-        player2.update(player2_reward, training_progress=training_progress)
+        return player1_reward, player2_reward
 
-        # Update statistics
-        player1_wins.append(1 if player1_won else 0)
-        player1_scores.append(player1_score)
+    def update_players(
+        self,
+        left_player,
+        right_player,
+        player1_reward,
+        player2_reward,
+        training_progress,
+    ):
+        left_player.update(player1_reward, training_progress=training_progress)
+        right_player.update(player2_reward, training_progress=training_progress)
 
-        # Print progress
-        if (game_number + 1) % 1000 == 0:
-            current_wins = sum(player1_wins[-1000:])
-            current_win_percentage = (current_wins / min(1000, len(player1_wins))) * 100
-            average_score = sum(player1_scores[-1000:]) / min(1000, len(player1_scores))
-            print(
-                f"\rGame {game_number + 1}/{config.reinforced_training_games} - {player1.__class__.__name__} wins percentage {current_win_percentage:.2f}% last 1000 games, Average score: {average_score:.2f}",
-                end="",
-                flush=True,
+    def evolve_populations(self, left_results, right_results):
+        if self.population_left[0].__class__ in self.config.population_players:
+            player_class = create_player(
+                self.population_left[0].__class__, self.config
+            ).__class__
+            self.population_left = self.evolve_population(
+                self.population_left, left_results, player_class
             )
 
-    print(f"\nTraining completed after {config.reinforced_training_games} games.")
+        if self.population_right[0].__class__ in self.config.population_players:
+            player_class = create_player(
+                self.population_right[0].__class__, self.config
+            ).__class__
+            self.population_right = self.evolve_population(
+                self.population_right, right_results, player_class
+            )
+
+    def print_progress(self, round_number, left_results, right_results):
+        avg_left_score = np.mean([r[1] for r in left_results])
+        avg_right_score = np.mean([r[1] for r in right_results])
+        print(
+            f"\rRound {round_number + 1}/{self.num_rounds} - Left avg score: {avg_left_score:.2f}, Right avg score: {avg_right_score:.2f}",
+            end="",
+            flush=True,
+        )
+
+    def evolve_population(self, population, results, player_class):
+        # Sort players by their rewards
+        sorted_players = sorted(results, key=lambda x: x[1], reverse=True)
+
+        new_population = []
+
+        # Top performers reproduce twice
+        top_count = self.config.genetic_top_reproduction
+        for player, reward in sorted_players[:top_count]:
+            new_population.append(player)
+            new_player = player.copy()
+            new_player.mutate()
+
+            new_population.append(new_player)
+            another_new_player = player.copy()
+            another_new_player.mutate()
+
+            new_population.append(another_new_player)
+
+        # Middle performers stay in the pool, possibly updating
+        middle_count = self.config.genetic_middle_reproduction
+        for player, reward in sorted_players[top_count : top_count + middle_count]:
+            new_population.append(player)
+            if np.random.random() < 0.5:  # 50% chance to update
+                new_player = player.copy()
+                new_player.mutate()
+                new_population.append(new_player)
+        # Fill the rest of the population with new players of the same type
+        while len(new_population) < len(population):
+            if player_class.__name__ == self.population_left[0].__class__.__name__:
+                new_population.append(create_player(self.player_left, self.config))
+            elif player_class.__name__ == self.population_right[0].__class__.__name__:
+                new_population.append(create_player(self.player_right, self.config))
+            else:
+                raise ValueError(f"Unexpected player class: {player_class.__name__}")
+
+        # Randomly shuffle the population
+        self.config.random_generator.shuffle(new_population)
+
+        # Select the first population_size players
+        return new_population[: self.config.population_size]
 
 
 @click.command()
 @click.option(
     "--left-player",
-    type=click.Choice(["random", "reinforced", "gym"]),
+    type=click.Choice(["random", "reinforced", "genetic"]),
     default="random",
     help="Type of left player",
 )
 @click.option(
     "--right-player",
-    type=click.Choice(["random", "reinforced", "gym"]),
+    type=click.Choice(["random", "reinforced", "genetic"]),
     default="random",
     help="Type of right player",
 )
@@ -89,7 +203,8 @@ def main(left_player, right_player, num_matches, num_training_rounds, train):
     game = Game(config)
 
     if train:
-        train_players(player1, player2, config, game)
+        trainer = Trainer(player1, player2, config, game, left_player, right_player)
+        trainer.train()
 
     player1_wins = 0
 

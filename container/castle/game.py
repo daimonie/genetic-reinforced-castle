@@ -26,6 +26,11 @@ class Config:
         self.reinforced_win_reward = 100
         self.reinforced_lose_penalty = 50
 
+        population_players = ["GeneticPlayer"]
+        self.mutation_std_dev = 0.1
+        self.point_mutation_rate = 0.01  # Low rate for subtle changes
+        self.swap_probability = 0.05  # Occasional swaps for diversity
+
 
 class Game:
     def __init__(self, config):
