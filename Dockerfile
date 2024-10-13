@@ -6,8 +6,11 @@ RUN groupadd -r python-role && useradd -m -r -g python-role pythonuser
 # Create the project directory and set ownership
 RUN mkdir -p /opt/container && chown -R pythonuser:python-role /opt/container
 
+# Create the output directory and set permissions
+RUN mkdir -p /opt/container/output && chown -R pythonuser:python-role /opt/container/output && chmod 755 /opt/container/output
+
 # Switch to the non-root user
-USER pythonuser
+# USER pythonuser
 
 # Set working directory
 WORKDIR /opt/container
@@ -16,7 +19,7 @@ WORKDIR /opt/container
 COPY --chown=pythonuser:python-role container/ .
 
 # Install poetry using pip
-RUN pip install --user poetry
+RUN pip install poetry
 
 # Add poetry to PATH
 ENV PATH="/home/pythonuser/.local/bin:$PATH"

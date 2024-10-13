@@ -9,6 +9,7 @@ readme = "README.md"
 python = "3.12.3"
 numpy = "^1.26.2"
 click = "^8.1.7"
+seaborn = "^0.13.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"

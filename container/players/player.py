@@ -55,6 +55,18 @@ class Player(ABC):
         return sanitized
 
 
+class FitnessPlayer(Player):
+    @abstractmethod
+    def fitness(self) -> float:
+        """
+        Calculate and return the fitness of the player.
+
+        Returns:
+            float: The calculated fitness score.
+        """
+        pass
+
+
 class RandomPlayer(Player):
     def distribute_armies(self) -> Dict[int, int]:
         """

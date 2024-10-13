@@ -15,6 +15,7 @@ class Config:
         self.armies_per_player = armies_per_player
         self.random_generator = np.random.default_rng()
         self.num_matches = num_matches
+        self.num_training_rounds = num_training_rounds
 
         self.learning_rate = 0.05  # Lower learning rate for stability
         self.discount_factor = (
@@ -26,10 +27,11 @@ class Config:
         self.reinforced_win_reward = 100
         self.reinforced_lose_penalty = 50
 
-        population_players = ["GeneticPlayer"]
+        self.population_players = ["genetic"]
         self.mutation_std_dev = 0.1
         self.point_mutation_rate = 0.01  # Low rate for subtle changes
         self.swap_probability = 0.05  # Occasional swaps for diversity
+        self.population_size = 1000
 
 
 class Game:

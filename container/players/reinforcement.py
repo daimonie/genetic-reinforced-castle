@@ -7,10 +7,13 @@ from castle.game import Config
 class ReinforcedPlayer(Player):
     def __init__(self, config: Config):
         super().__init__(config)
-        # Initialize Q-matrix with small random values
+        self.num_castles = self.config.num_castles
+        self.num_armies = self.config.armies_per_player
+        # Q-matrix: [armies_left][castle] -> Q-value
         self.qmatrix = np.random.uniform(
-            0, 0.1, (self.config.num_castles, self.config.armies_per_player + 1)
+            0, 0.1, (self.num_armies + 1, self.num_castles)
         )
+        self.last_actions = []
 
     def set_qmatrix(self, qmatrix):
         self.qmatrix = qmatrix
@@ -28,72 +31,57 @@ class ReinforcedPlayer(Player):
         """
         Update the Q-matrix based on the last action and received reward.
         """
-        # Adjust learning rate decay
         learning_rate = self.config.learning_rate * (1 - training_progress)
+        discount_factor = 0.9  # You can adjust this
 
-        if not hasattr(self, "last_distribution"):
-            raise ValueError(
-                "No cached distribution found. Make sure to call distribute_armies before update."
-            )
-
-        # Normalize reward to be between -1 and 1
+        # Normalize reward
         if reward > 0:
             normalized_reward = reward / self.config.reinforced_win_reward
         else:
             normalized_reward = reward / self.config.reinforced_lose_penalty
 
-        for castle, armies in self.last_distribution.items():
-            castle_index = castle - 1  # Adjust for 0-based indexing
-            current_q = self.qmatrix[castle_index, armies]
+        # Reverse the actions to update from last to first
+        for i, (armies_left, castle) in enumerate(reversed(self.last_actions)):
+            castle_index = castle - 1
+            current_q = self.qmatrix[armies_left, castle_index]
 
-            # Calculate the update
-            update = learning_rate * (normalized_reward - current_q)
+            if i == 0:  # Last action
+                next_max_q = 0
+            else:
+                next_armies_left, next_castle = self.last_actions[-i]
+                next_max_q = np.max(self.qmatrix[next_armies_left])
 
-            # Update the Q-value
-            self.qmatrix[castle_index, armies] += update
-
-        # Remove normalization step for entire Q-matrix
+            # Q-learning update rule
+            new_q = current_q + learning_rate * (
+                normalized_reward + discount_factor * next_max_q - current_q
+            )
+            self.qmatrix[armies_left, castle_index] = max(
+                0, new_q
+            )  # Ensure non-negative
 
     def distribute_armies(self) -> Dict[int, int]:
-        if self.qmatrix is None:
-            raise ValueError(
-                "Q-matrix has not been set. Call set_qmatrix before distributing armies."
-            )
+        distribution = {castle: 0 for castle in range(1, self.num_castles + 1)}
+        armies_left = self.num_armies
+        self.last_actions = []
+        # This approach creates a pseudo-state by considering the number of
+        # armies left to distribute as part of the state. While there's no
+        # traditional state progression in this single-decision game, this
+        # method allows the agent to learn different strategies based on the
+        # remaining resources. It's effective because:
+        # 1. It captures the diminishing returns of placing armies.
+        # 2. It allows for more nuanced decision-making as the distribution progresses.
+        # 3. It can learn to prioritize certain castles early or late in the distribution.
 
-        distribution = {}
-        total_armies = self.config.armies_per_player
-        castles = list(self.config.points_per_castle.keys())
+        while armies_left > 0:
+            if self.config.random_generator.random() < self.config.epsilon:
+                # Exploration: choose a random castle
+                castle = self.config.random_generator.choice(self.num_castles) + 1
+            else:
+                # Exploitation: choose the castle with the highest Q-value
+                castle = np.argmax(self.qmatrix[armies_left]) + 1
 
-        # Epsilon-greedy strategy
-        if self.config.random_generator.random() < self.config.epsilon:
-            # Improved exploration: distribute armies with preference for higher-value castles
-            weights = np.array(
-                [self.config.points_per_castle[castle] for castle in castles]
-            )
-            probabilities = weights / np.sum(weights)
-            army_distribution = self.config.random_generator.multinomial(
-                total_armies, probabilities
-            )
-        else:
-            # Simplified exploitation: choose the best action for each castle
-            army_distribution = np.zeros(len(castles), dtype=int)
-            for i, castle in enumerate(castles):
-                best_action = np.argmax(self.qmatrix[i, : total_armies + 1])
-                army_distribution[i] = best_action
+            distribution[castle] += 1
+            self.last_actions.append((armies_left, castle))
+            armies_left -= 1
 
-            # Adjust distribution if total exceeds available armies
-            while np.sum(army_distribution) > total_armies:
-                excess = np.sum(army_distribution) - total_armies
-                for _ in range(excess):
-                    non_zero_indices = np.where(army_distribution > 0)[0]
-                    index_to_reduce = self.config.random_generator.choice(
-                        non_zero_indices
-                    )
-                    army_distribution[index_to_reduce] -= 1
-
-        # Assign armies to castles
-        for castle, armies in zip(castles, army_distribution):
-            distribution[castle] = int(armies)
-
-        self.last_distribution = distribution
         return distribution
