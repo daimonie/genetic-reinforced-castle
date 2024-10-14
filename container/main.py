@@ -81,41 +81,11 @@ def plot_training_results(
     sample_indices = np.random.choice(len(left_wins), num_samples, replace=False)
     sample_indices.sort()  # Sort indices to maintain chronological order
 
-    if len(left_wins) > 250:
-        # Create binned data
-        num_bins = min(100, len(left_wins))
-        bin_size = len(left_wins) // num_bins
-        binned_left_wins = []
-        binned_right_wins = []
-        binned_rounds = []
-
-        for i in range(0, len(left_wins), bin_size):
-            bin_end = min(i + bin_size, len(left_wins))
-            binned_left_wins.append(sum(left_wins[i:bin_end]))
-            binned_right_wins.append(sum(right_wins[i:bin_end]))
-            binned_rounds.append(rounds[i])
-
-        plt.figure(figsize=(12, 6))
-        plt.scatter(
-            binned_rounds,
-            binned_left_wins,
-            label=f"{left_player.capitalize()} Wins",
-            alpha=0.7,
-        )
-        plt.scatter(
-            binned_rounds,
-            binned_right_wins,
-            label=f"{right_player.capitalize()} Wins",
-            alpha=0.7,
-        )
-    else:
-        plt.figure(figsize=(12, 6))
-        plt.scatter(
-            rounds, left_wins, label=f"{left_player.capitalize()} Wins", alpha=0.7
-        )
-        plt.scatter(
-            rounds, right_wins, label=f"{right_player.capitalize()} Wins", alpha=0.7
-        )
+    plt.figure(figsize=(12, 6))
+    plt.scatter(rounds, left_wins, label=f"{left_player.capitalize()} Wins", alpha=0.7)
+    plt.scatter(
+        rounds, right_wins, label=f"{right_player.capitalize()} Wins", alpha=0.7
+    )
 
     plt.title(
         f"Training Progress: {left_player.capitalize()} vs {right_player.capitalize()} (Final {left_player.capitalize()} Win %: {final_left_win_percentage:.2f}%)"

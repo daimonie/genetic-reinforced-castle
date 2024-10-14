@@ -49,7 +49,7 @@ These genetic operations allow the `GeneticPlayer` to adapt and refine its strat
 
 To compare the performance of the Genetic and Reinforced players, you can run a battle between them using the following command:
 
-    poetry run python main.py --left-player genetic --right-player reinforced --num-matches 100 --num-training-rounds 20000 --train
+    poetry run python main.py --left-player genetic --right-player reinforced --num-matches 100 --num-training-rounds 2000000 --train
 
 This will train both players for 10,000 rounds and then play 1,000 matches between them. The results will show the win percentage for each player, allowing you to compare their effectiveness.
 
