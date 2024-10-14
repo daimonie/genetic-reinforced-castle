@@ -19,3 +19,4 @@ test:
 	--memory=16g \
 	-v $(PWD)/data/:/opt/container/data \
 	genetic-castle poetry run python -m pytest --color yes
+ 
