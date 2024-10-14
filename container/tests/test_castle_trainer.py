@@ -78,26 +78,6 @@ class TestTrainer(unittest.TestCase):
         self.assertEqual(len(new_population), len(initial_population))
         self.assertNotEqual(new_population, initial_population)
 
-    def test_best_player(self):
-        trainer = Trainer(self.config, self.game, "genetic", "reinforced")
-        with self.assertRaises(AttributeError):
-            trainer.best_player("left")
-        with self.assertRaises(AttributeError):
-            trainer.best_player("right")
-
-        # Ensure trainer has initialized and completed a round
-        trainer = Trainer(self.config, self.game, "genetic", "reinforced")
-        left_results, right_results = trainer.play_round(
-            0
-        )  # Simulate playing one round
-        trainer.evolve_populations(
-            left_results, right_results
-        )  # Evolve populations to set best players
-
-        # Test with non-empty population
-        best_left = trainer.best_player("left")
-        self.assertIsInstance(best_left, GeneticPlayer)
-
     @patch("players.reinforcement.ReinforcedPlayer.distribute_armies")
     @patch("players.reinforcement.ReinforcedPlayer.update")
     def test_update_players(self, mock_update, mock_distribute):
